@@ -373,7 +373,8 @@
 
         // 服务控制
         function toggleService() {
-            if (!isRunning) {
+            const btn = $("#controlBtn");
+            if (!btn.hasClass('running')) {
                 const params = collectParams();
                 const errors = validateForm(params);
 
@@ -401,15 +402,16 @@
                     }
                 });
             } else {
-                $('#controlBtn').prop('disabled', true).text('停止中...');
-                
+                btn.prop('disabled', true).text('停止中...');
                 $.post('/stop')
-                    .done(fetchStatus)
-                    .fail(function() {
-                        alert('停止服务失败');
-                        $('#controlBtn').prop('disabled', false);
-                        fetchStatus();
-                    });
+                    .done(() => {
+                      btn.text('启动服务').removeClass('running');
+                    })
+                    .fail(() => {
+                        showToast('停止失败，正在重试...');
+                        setTimeout(fetchStatus, 1000);
+                    })
+                    .always(() => btn.prop('disabled', false));
             }
         }
 

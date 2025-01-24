@@ -169,19 +169,22 @@ def stop_service():
     with process_lock:
         if natter_process:
             try:
-                # 关键修改点：直接使用进程 PID 作为进程组 ID
                 os.killpg(natter_process.pid, signal.SIGTERM)
-                logging.info(f"已向进程组 {natter_process.pid} 发送 SIGTERM 信号")
+                logging.info(f"Sent SIGTERM to process group {natter_process.pid}")
+                try:
+                    natter_process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    os.killpg(natter_process.pid, signal.SIGKILL)
+                    logging.warning(f"Force killed process group {natter_process.pid}")
                 natter_process = None
                 return jsonify({"status": "success", "message": "服务已停止"})
             except ProcessLookupError:
-                # 添加日志记录
-                logging.warning("尝试终止不存在的进程")
+                logging.warning("进程不存在")
                 return jsonify({"status": "error", "message": "进程不存在"})
             except Exception as e:
-                logging.error(f"停止失败: {str(e)}", exc_info=True)
-                return jsonify({"status": "error", "message": "停止服务失败"})
-        return jsonify({"status": "error", "message": "没有正在运行的服务"})
+                logging.error(f"停止失败: {str(e)}")
+                return jsonify({"status": "error", "message": "停止失败"})
+        return jsonify({"status": "error", "message": "服务未运行"})
 
 @app.route('/status')
 @app.route('/status')
