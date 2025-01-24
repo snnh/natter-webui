@@ -343,24 +343,6 @@
 
             // 显示/隐藏UDP提示
             $udpTip.toggle(isUDP);
-
-            // UDP模式特殊处理
-            if (isUDP) {
-
-                // 过滤可用转发方法
-                $forwardMethod.find('option').each(function() {
-                    const value = $(this).val();
-                    $(this).prop('disabled', ['iptables', 'gost'].includes(value));
-                });
-                
-                // 自动选择有效方法
-                if (['iptables', 'gost'].includes($forwardMethod.val())) {
-                    $forwardMethod.val('socket');
-                }
-            } else {
-                // 恢复所有选项
-                $forwardMethod.find('option').prop('disabled', false);
-            }
         }
 
         // 收集参数
@@ -395,22 +377,8 @@
             const hostPortRegex = /^([a-zA-Z0-9.-]+):\d+$/;
 
             // 基础验证
-            if (!params.bind_port) errors.push("必须填写绑定端口");
             if (params.target_port && !/^\d+$/.test(params.target_port)) {
                 errors.push("目标端口必须为有效数字");
-            }
-
-            // UDP模式验证
-            if (params.udp && !hostPortRegex.test(params.heartbeat_server)) {
-                errors.push("心跳服务器格式应为 主机:端口（例如：stun.example.com:3478）");
-            }
-            if (params.udp && !params.bind_port) {
-                errors.push("UDP模式必须填写绑定端口");
-            }
-
-            // TCP模式验证
-            if (!params.udp && params.forward_method === 'socket') {
-                errors.push("TCP模式不支持 socket 转发方法");
             }
 
             return errors;
@@ -472,8 +440,11 @@
                      .text(data.running ? '停止服务' : '启动服务')
                      .prop('disabled', false);
 
-            if (!data.running && $("#controlBtn").text() === "停止中...") {
-                fetchStatus(); // 重新拉取状态
+            if (!data.running) {
+                if ($("#controlBtn").text() === "停止中...") {
+                    // 若服务已停止但按钮状态未更新，强制刷新
+                    setTimeout(fetchStatus, 500);
+                }
                 showToast("服务已成功终止");
             }
 

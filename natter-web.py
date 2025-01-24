@@ -53,10 +53,21 @@ def run_natter(params):
                         log_buffer.pop(0)
 
     except Exception as e:
-        logging.error(f"运行Natter时出错: {str(e)}")
+        logging.error(f"运行Natter时出错: {str(e)}", exc_info=True)
     finally:
         with process_lock:
-            natter_process = None
+            if natter_process:
+                try:
+                    # 先尝试正常终止
+                    os.killpg(natter_process.pid, signal.SIGTERM)
+                    natter_process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    # 超时后强制终止
+                    os.killpg(natter_process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                finally:
+                    natter_process = None
 
 @app.route('/')
 def index():
@@ -75,13 +86,6 @@ def validate_parameters(data):
                     errors.append(f"{field} 端口无效")
             except ValueError:
                 errors.append(f"{field} 必须为整数")
-    
-    # UDP模式特殊验证
-    if data.get('udp_mode'):
-        # 检查转发方法兼容性
-        if data.get('forward_method') in ['iptables', 'nftables']:
-            errors.append(f"UDP模式不支持 {data['forward_method']} 转发方法")
-        
     
     # 保活间隔验证
     if data.get('keepalive_interval'):
@@ -147,14 +151,7 @@ def start_service():
                         if value:  # 处理开关型参数
                             params.append(flag)
             
-            # 特殊处理UDP模式
-            if data.get('udp_mode'):
-                # 添加UDP专用参数
-                params.append('-u')
-                # 检查是否需要添加默认心跳服务器
-                if not data.get('heartbeat_server'):
-                    params.extend(['-h', '8.8.8.8:53'])  # UDP默认使用DNS服务器
-
+ 
             logging.debug(f"最终参数列表: {params}")
             
             thread = threading.Thread(target=run_natter, args=(params,))
@@ -187,12 +184,13 @@ def stop_service():
         return jsonify({"status": "error", "message": "没有正在运行的服务"})
 
 @app.route('/status')
+@app.route('/status')
 def get_status():
-    with process_lock, log_lock:
-        return jsonify({
-            "running": natter_process is not None,
-            "logs": log_buffer[-20:]  # 返回最近20条日志
-        })
+    with process_lock:
+        running = natter_process is not None
+    with log_lock:
+        logs = log_buffer[-20:]
+    return jsonify({"running": running, "logs": logs})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
