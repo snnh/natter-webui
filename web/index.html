@@ -202,17 +202,6 @@
 <body>
     <div class="container">
         <h1>Natter 高级控制面板</h1>
-        
-        <!-- UDP模式提示 -->
-        <div class="udp-tip" id="udpTip">
-            <strong>UDP模式注意事项：</strong>
-            <ul>
-                <li>必须指定绑定端口</li>
-                <li>默认使用 8.8.8.8:53 作为心跳服务器</li>
-                <li>仅支持 socket/socat 转发方法</li>
-                <li>需要开放UDP端口访问权限</li>
-            </ul>
-        </div>
 
         <!-- 基础配置 -->
         <div class="form-section">
@@ -341,8 +330,6 @@
             const $udpTip = $('#udpTip');
             const $forwardMethod = $('#forward_method');
 
-            // 显示/隐藏UDP提示
-            $udpTip.toggle(isUDP);
         }
 
         // 收集参数
