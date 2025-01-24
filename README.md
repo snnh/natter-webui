@@ -1,3 +1,9 @@
+# Natter-webui使用方法  
+安装python3和python3-flask  
+git clone本仓库
+python3 natter-web.py  
+访问http://127.0.0.1:5000/   
+
 # Natter (v2)
 
 Expose your port behind full-cone NAT to the Internet.
